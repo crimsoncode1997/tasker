@@ -4,7 +4,7 @@ Board-related Pydantic schemas.
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.user import User
 from app.schemas.list import ListSchema
@@ -32,7 +32,7 @@ class BoardInDB(BoardBase):
     id: UUID
     owner_id: UUID
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -40,7 +40,7 @@ class BoardInDB(BoardBase):
 class Board(BoardInDB):
     """Schema for board response."""
     owner: User
-    lists: List[ListSchema] = []
+    lists: List[ListSchema] = Field(default_factory=list)
     
     model_config = ConfigDict(from_attributes=True)
 

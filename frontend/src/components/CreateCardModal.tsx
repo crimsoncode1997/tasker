@@ -44,14 +44,21 @@ export const CreateCardModal: React.FC<CreateCardModalProps> = ({
     mutationFn: (data: CreateCardFormData) =>
       cardsApi.createCard({ ...data, list_id: listId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['boards'] })
+      // Invalidate any board queries containing this list
+      queryClient.invalidateQueries({ queryKey: ['board'] })
       reset()
       onClose()
     },
   })
 
   const handleFormSubmit = (data: CreateCardFormData) => {
-    createCardMutation.mutate(data)
+    const payload: CreateCardFormData = {
+      ...data,
+      // Convert empty strings to undefined so backend Optional[date] validates
+      due_date: data.due_date && data.due_date.trim() !== '' ? data.due_date : undefined,
+      description: data.description && data.description.trim() !== '' ? data.description : undefined,
+    }
+    createCardMutation.mutate(payload)
   }
 
   const handleClose = () => {

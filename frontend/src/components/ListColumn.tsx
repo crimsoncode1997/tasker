@@ -3,6 +3,8 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { List, Card } from '@/types'
+import { useDroppable } from '@dnd-kit/core'
+import { cardsApi } from '@/services/cards'
 import { CardItem } from '@/components/CardItem'
 import { CreateCardModal } from '@/components/CreateCardModal'
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
@@ -11,10 +13,11 @@ import { listsApi } from '@/services/lists'
 
 interface ListColumnProps {
   list: List
+  boardId: string
   onCardClick: (card: Card) => void
 }
 
-export const ListColumn: React.FC<ListColumnProps> = ({ list, onCardClick }) => {
+export const ListColumn: React.FC<ListColumnProps> = ({ list, boardId, onCardClick }) => {
   const [isCreateCardModalOpen, setIsCreateCardModalOpen] = useState(false)
   const queryClient = useQueryClient()
 
@@ -36,7 +39,14 @@ export const ListColumn: React.FC<ListColumnProps> = ({ list, onCardClick }) => 
   const deleteListMutation = useMutation({
     mutationFn: listsApi.deleteList,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['boards'] })
+      queryClient.invalidateQueries({ queryKey: ['board', boardId] })
+    },
+  })
+
+  const deleteCardMutation = useMutation({
+    mutationFn: cardsApi.deleteCard,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['board', boardId] })
     },
   })
 
@@ -46,18 +56,25 @@ export const ListColumn: React.FC<ListColumnProps> = ({ list, onCardClick }) => 
     }
   }
 
+  const { setNodeRef: setDroppableRef } = useDroppable({ id: list.id })
+
   return (
     <div
-      ref={setNodeRef}
+      ref={(node) => { setNodeRef(node); setDroppableRef(node as HTMLElement | null) }}
       style={style}
-      {...attributes}
-      {...listeners}
       className="w-72 bg-gray-100 rounded-lg p-4 flex-shrink-0"
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">{list.title}</h3>
+        <h3
+          className="font-semibold text-gray-900 cursor-move"
+          {...attributes}
+          {...listeners}
+        >
+          {list.title}
+        </h3>
         <button
-          onClick={handleDeleteList}
+          onClick={(e) => { e.stopPropagation(); handleDeleteList(); }}
+          onPointerDown={(e) => e.stopPropagation()}
           className="text-gray-400 hover:text-red-600"
         >
           <TrashIcon className="w-4 h-4" />
@@ -70,11 +87,20 @@ export const ListColumn: React.FC<ListColumnProps> = ({ list, onCardClick }) => 
       >
         <div className="space-y-3 mb-4">
           {list.cards.map((card) => (
-            <CardItem
-              key={card.id}
-              card={card}
-              onClick={() => onCardClick(card)}
-            />
+            <div key={card.id} className="relative group">
+              <CardItem
+                card={card}
+                onClick={() => onCardClick(card)}
+              />
+              <button
+                onClick={(e) => { e.stopPropagation(); deleteCardMutation.mutate(card.id) }}
+                className="absolute top-2 right-2 hidden group-hover:block text-gray-400 hover:text-red-600"
+                aria-label="Delete card"
+                title="Delete card"
+              >
+                ×
+              </button>
+            </div>
           ))}
         </div>
       </SortableContext>

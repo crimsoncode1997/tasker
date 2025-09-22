@@ -85,7 +85,7 @@ class CardService:
         logger.info("Card deleted", card_id=str(card.id))
     
     async def move_card(self, db: AsyncSession, card_move: CardMove) -> Card:
-        """Move card to another list."""
+        """Move card to another list and reindex positions in both lists."""
         # Get card
         card = await self.get_by_id(db, card_move.card_id)
         if not card:
@@ -93,16 +93,56 @@ class CardService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Card not found"
             )
-        
-        # Update position in new list
-        card.list_id = card_move.list_id
-        card.position = card_move.position
-        
-        db.add(card)
+
+        source_list_id = card.list_id
+        dest_list_id = card_move.list_id
+
+        # If moving within the same list, treat as reorder
+        if source_list_id == dest_list_id:
+            cards = await self.get_by_list_id(db, dest_list_id)
+            # Remove the card from its current index
+            cards = [c for c in cards if c.id != card.id]
+            insert_index = int(max(0, min(card_move.position, len(cards))))
+            cards.insert(insert_index, card)
+            # Reindex positions
+            for idx, c in enumerate(cards):
+                c.position = float(idx)
+                db.add(c)
+            await db.commit()
+            await db.refresh(card)
+            logger.info("Card reordered within list", card_id=str(card.id), list_id=str(dest_list_id))
+            return card
+
+        # Moving to another list
+        # Reindex source list after removing the card
+        source_cards = await self.get_by_list_id(db, source_list_id)
+        source_cards = [c for c in source_cards if c.id != card.id]
+        for idx, c in enumerate(source_cards):
+            c.position = float(idx)
+            db.add(c)
+
+        # Insert into destination list at requested position
+        dest_cards = await self.get_by_list_id(db, dest_list_id)
+        insert_index = int(max(0, min(card_move.position, len(dest_cards))))
+
+        # Update the moved card's list before reindexing destination
+        card.list_id = dest_list_id
+        # Build new order for destination including moved card
+        new_dest_cards: List[Card] = dest_cards[:]
+        new_dest_cards.insert(insert_index, card)
+        for idx, c in enumerate(new_dest_cards):
+            c.position = float(idx)
+            db.add(c)
+
         await db.commit()
         await db.refresh(card)
-        
-        logger.info("Card moved", card_id=str(card.id), new_list_id=str(card_move.list_id))
+
+        logger.info(
+            "Card moved",
+            card_id=str(card.id),
+            old_list_id=str(source_list_id),
+            new_list_id=str(dest_list_id),
+        )
         return card
     
     async def reorder_cards(self, db: AsyncSession, list_id: UUID, card_positions: List[dict]) -> None:

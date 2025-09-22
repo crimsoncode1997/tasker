@@ -10,6 +10,7 @@ from fastapi import HTTPException, status
 import structlog
 
 from app.models.list import List as ListModel
+from app.models.card import Card
 from app.models.board import Board
 from app.schemas.list import ListCreate, ListUpdate
 
@@ -25,7 +26,7 @@ class ListService:
             select(ListModel)
             .options(
                 selectinload(ListModel.board),
-                selectinload(ListModel.cards).selectinload("assignee")
+                selectinload(ListModel.cards).selectinload(Card.assignee)
             )
             .where(ListModel.id == list_id)
         )
@@ -35,7 +36,7 @@ class ListService:
         """Get all lists for a board ordered by position."""
         result = await db.execute(
             select(ListModel)
-            .options(selectinload(ListModel.cards).selectinload("assignee"))
+            .options(selectinload(ListModel.cards).selectinload(Card.assignee))
             .where(ListModel.board_id == board_id)
             .order_by(ListModel.position)
         )

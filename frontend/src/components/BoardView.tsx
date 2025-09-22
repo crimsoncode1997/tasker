@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
+import { DndContext, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { ListColumn } from '@/components/ListColumn'
 import { CardModal } from '@/components/CardModal'
@@ -18,7 +18,39 @@ export const BoardView: React.FC<BoardViewProps> = ({ board }) => {
 
   const moveCardMutation = useMutation({
     mutationFn: cardsApi.moveCard,
-    onSuccess: () => {
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: ['board', board.id] })
+      const previous = queryClient.getQueryData<Board>(['board', board.id])
+      if (previous) {
+        const updated: Board = {
+          ...previous,
+          lists: previous.lists.map((l) => ({ ...l, cards: [...l.cards] })),
+        }
+        // Remove card from its current list
+        const sourceList = updated.lists.find((l) => l.cards.some((c) => c.id === variables.card_id))
+        const destList = updated.lists.find((l) => l.id === variables.list_id)
+        if (sourceList && destList) {
+          const cardIndex = sourceList.cards.findIndex((c) => c.id === variables.card_id)
+          if (cardIndex !== -1) {
+            const [moved] = sourceList.cards.splice(cardIndex, 1)
+            moved.list_id = destList.id
+            const insertIndex = Math.min(Math.max(variables.position, 0), destList.cards.length)
+            destList.cards.splice(insertIndex, 0, moved)
+            // Renumber positions locally
+            destList.cards.forEach((c, idx) => (c.position = idx))
+            sourceList.cards.forEach((c, idx) => (c.position = idx))
+          }
+        }
+        queryClient.setQueryData(['board', board.id], updated)
+      }
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['board', board.id], context.previous)
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['board', board.id] })
     },
   })
@@ -26,7 +58,37 @@ export const BoardView: React.FC<BoardViewProps> = ({ board }) => {
   const reorderCardsMutation = useMutation({
     mutationFn: ({ listId, positions }: { listId: string; positions: any[] }) =>
       cardsApi.reorderCards(listId, positions),
-    onSuccess: () => {
+    onMutate: async ({ listId, positions }) => {
+      await queryClient.cancelQueries({ queryKey: ['board', board.id] })
+      const previous = queryClient.getQueryData<Board>(['board', board.id])
+      if (previous) {
+        const updated: Board = {
+          ...previous,
+          lists: previous.lists.map((l) => ({ ...l, cards: [...l.cards] })),
+        }
+        const targetList = updated.lists.find((l) => l.id === listId)
+        if (targetList) {
+          // Apply new order based on provided positions
+          const idToCard = new Map(targetList.cards.map((c) => [c.id, c]))
+          targetList.cards = positions
+            .slice()
+            .sort((a, b) => a.position - b.position)
+            .map((p) => {
+              const card = idToCard.get(p.card_id)!
+              card.position = p.position
+              return card
+            })
+        }
+        queryClient.setQueryData(['board', board.id], updated)
+      }
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['board', board.id], context.previous)
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['board', board.id] })
     },
   })
@@ -70,6 +132,22 @@ export const BoardView: React.FC<BoardViewProps> = ({ board }) => {
         })
       }
     }
+    // Reordering within the same list
+    else if (overCard && card.list_id === overCard.list_id) {
+      const targetList = findList(card.list_id)
+      if (!targetList) return
+
+      const cards = [...targetList.cards]
+      const fromIndex = cards.findIndex((c) => c.id === card.id)
+      const toIndex = cards.findIndex((c) => c.id === overCard.id)
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return
+
+      const [moved] = cards.splice(fromIndex, 1)
+      cards.splice(toIndex, 0, moved)
+
+      const positions = cards.map((c, idx) => ({ card_id: c.id, position: idx }))
+      reorderCardsMutation.mutate({ listId: targetList.id, positions })
+    }
   }
 
   const findCard = (cardId: string): Card | null => {
@@ -99,6 +177,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ board }) => {
               <ListColumn
                 key={list.id}
                 list={list}
+                boardId={board.id}
                 onCardClick={setSelectedCard}
               />
             ))}

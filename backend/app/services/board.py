@@ -10,6 +10,8 @@ from fastapi import HTTPException, status
 import structlog
 
 from app.models.board import Board, BoardMember
+from app.models.list import List as ListModel
+from app.models.card import Card
 from app.models.user import User
 from app.schemas.board import BoardCreate, BoardUpdate, BoardInvite
 
@@ -25,8 +27,8 @@ class BoardService:
             select(Board)
             .options(
                 selectinload(Board.owner),
-                selectinload(Board.lists).selectinload("cards").selectinload("assignee"),
-                selectinload(Board.members).selectinload("user")
+                selectinload(Board.lists).selectinload(ListModel.cards).selectinload(Card.assignee),
+                selectinload(Board.members).selectinload(BoardMember.user)
             )
             .where(Board.id == board_id)
         )
@@ -36,10 +38,13 @@ class BoardService:
         """Get boards accessible by user (owned or member)."""
         result = await db.execute(
             select(Board)
-            .join(BoardMember, Board.id == BoardMember.board_id, isouter=True)
-            .where(
-                (Board.owner_id == user_id) | (BoardMember.user_id == user_id)
+            .options(
+                selectinload(Board.owner),
+                selectinload(Board.lists).selectinload(ListModel.cards).selectinload(Card.assignee),
+                selectinload(Board.members).selectinload(BoardMember.user)
             )
+            .join(BoardMember, Board.id == BoardMember.board_id, isouter=True)
+            .where((Board.owner_id == user_id) | (BoardMember.user_id == user_id))
             .order_by(Board.updated_at.desc())
         )
         return list(result.scalars().all())

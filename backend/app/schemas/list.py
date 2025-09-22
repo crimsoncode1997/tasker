@@ -4,7 +4,7 @@ List-related Pydantic schemas.
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.card import Card
 
@@ -32,14 +32,14 @@ class ListInDB(ListBase):
     board_id: UUID
     position: float
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
     
     model_config = ConfigDict(from_attributes=True)
 
 
 class ListSchema(ListInDB):
     """Schema for list response."""
-    cards: List[Card] = []
+    cards: List[Card] = Field(default_factory=list)
     
     model_config = ConfigDict(from_attributes=True)
 
