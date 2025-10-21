@@ -1,6 +1,7 @@
 import { ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { NotificationBell } from '@/components/NotificationBell'
 import { Bars3Icon, UserIcon } from '@heroicons/react/24/outline'
 
 interface LayoutProps {
@@ -32,6 +33,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
 
             <div className="flex items-center space-x-4">
+              <NotificationBell />
               <div className="flex items-center space-x-2">
                 <UserIcon className="w-5 h-5 text-gray-400" />
                 <span className="text-sm text-gray-700">{user?.full_name}</span>

@@ -127,7 +127,7 @@ class BoardService:
         member = result.scalar_one_or_none()
         return member.role if member else None
     
-    async def invite_user(self, db: AsyncSession, board_id: UUID, email: str, role: str = "member") -> None:
+    async def invite_user(self, db: AsyncSession, board_id: UUID, email: str, role: str = "member", inviter_id: UUID = None) -> None:
         """Invite user to board by email."""
         # Get user by email
         result = await db.execute(select(User).where(User.email == email))
@@ -137,6 +137,13 @@ class BoardService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
+            )
+        
+        # Check if trying to invite self
+        if inviter_id and user.id == inviter_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot invite yourself to the board"
             )
         
         # Check if already a member
@@ -161,7 +168,50 @@ class BoardService:
         db.add(member)
         await db.commit()
         
-        logger.info("User invited to board", board_id=str(board_id), user_id=str(user.id), role=role)
+        # Create notification in database
+        from app.services.notification import notification_service
+        board = await self.get_by_id(db, board_id)
+        await notification_service.create_notification(
+            db=db,
+            user_id=user.id,
+            notification_type="board_invitation",
+            title="You've been invited to a board",
+            message=f"You have been added to board '{board.title}'",
+            data={
+                "board_id": str(board_id),
+                "board_title": board.title,
+                "role": role,
+                "inviter_id": str(inviter_id) if inviter_id else None
+            }
+        )
+        
+        # Send WebSocket notification to the invited user
+        from app.core.redis import redis_manager
+        notification_message = {
+            "type": "board_invitation",
+            "board_id": str(board_id),
+            "user_id": str(user.id),
+            "role": role,
+            "message": f"You have been added to board {board.title}",
+            "inviter_id": str(inviter_id) if inviter_id else None
+        }
+        await redis_manager.publish_board_update(str(board_id), notification_message)
+        
+        # Also send a global notification to the user (not board-specific)
+        global_notification = {
+            "type": "user_notification",
+            "user_id": str(user.id),
+            "notification": {
+                "type": "board_invitation",
+                "title": "You've been invited to a board",
+                "message": f"You have been added to board '{board.title}'",
+                "board_id": str(board_id),
+                "action": "view_board"
+            }
+        }
+        await redis_manager.publish_board_update(f"user:{user.id}", global_notification)
+        
+        logger.info("User invited to board", board_id=str(board_id), user_id=str(user.id), role=role, inviter_id=str(inviter_id))
 
 
 # Create service instance

@@ -2,13 +2,16 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Card } from '@/types'
 import { format } from 'date-fns'
+import { CardAssignment } from './CardAssignment'
 
 interface CardItemProps {
   card: Card
+  boardId: string
   onClick: () => void
+  onCardUpdate?: (card: Card) => void
 }
 
-export const CardItem: React.FC<CardItemProps> = ({ card, onClick }) => {
+export const CardItem: React.FC<CardItemProps> = ({ card, boardId, onClick, onCardUpdate }) => {
   const {
     attributes,
     listeners,
@@ -44,16 +47,11 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onClick }) => {
       )}
 
       <div className="flex items-center justify-between text-xs text-gray-500">
-        {card.assignee && (
-          <div className="flex items-center space-x-1">
-            <div className="w-6 h-6 bg-primary-100 rounded-full flex items-center justify-center">
-              <span className="text-primary-600 font-medium">
-                {card.assignee.full_name.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <span>{card.assignee.full_name}</span>
-          </div>
-        )}
+        <CardAssignment 
+          card={card} 
+          boardId={boardId} 
+          onAssignmentChange={onCardUpdate}
+        />
         
         {card.due_date && (
           <span className={`${isOverdue ? 'text-red-600' : 'text-gray-500'}`}>

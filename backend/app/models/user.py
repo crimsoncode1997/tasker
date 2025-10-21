@@ -27,6 +27,7 @@ class User(Base):
     owned_boards = relationship("Board", back_populates="owner", cascade="all, delete-orphan")
     board_memberships = relationship("BoardMember", back_populates="user", cascade="all, delete-orphan")
     assigned_cards = relationship("Card", back_populates="assignee")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email})>"

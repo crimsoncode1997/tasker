@@ -99,6 +99,23 @@ export const BoardView: React.FC<BoardViewProps> = ({ board }) => {
     setActiveCard(card)
   }
 
+  const handleCardUpdate = (updatedCard: Card) => {
+    // Update the card in the board data
+    queryClient.setQueryData<Board>(['board', board.id], (oldBoard) => {
+      if (!oldBoard) return oldBoard;
+      
+      return {
+        ...oldBoard,
+        lists: oldBoard.lists.map(list => ({
+          ...list,
+          cards: list.cards.map(card => 
+            card.id === updatedCard.id ? updatedCard : card
+          )
+        }))
+      };
+    });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveCard(null)
@@ -179,6 +196,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ board }) => {
                 list={list}
                 boardId={board.id}
                 onCardClick={setSelectedCard}
+                onCardUpdate={handleCardUpdate}
               />
             ))}
           </SortableContext>

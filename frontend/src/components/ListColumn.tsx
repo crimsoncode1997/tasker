@@ -15,9 +15,10 @@ interface ListColumnProps {
   list: List
   boardId: string
   onCardClick: (card: Card) => void
+  onCardUpdate?: (card: Card) => void
 }
 
-export const ListColumn: React.FC<ListColumnProps> = ({ list, boardId, onCardClick }) => {
+export const ListColumn: React.FC<ListColumnProps> = ({ list, boardId, onCardClick, onCardUpdate }) => {
   const [isCreateCardModalOpen, setIsCreateCardModalOpen] = useState(false)
   const queryClient = useQueryClient()
 
@@ -90,7 +91,9 @@ export const ListColumn: React.FC<ListColumnProps> = ({ list, boardId, onCardCli
             <div key={card.id} className="relative group">
               <CardItem
                 card={card}
+                boardId={boardId}
                 onClick={() => onCardClick(card)}
+                onCardUpdate={onCardUpdate}
               />
               <button
                 onClick={(e) => { e.stopPropagation(); deleteCardMutation.mutate(card.id) }}

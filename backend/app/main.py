@@ -11,7 +11,9 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.database import init_db
+from app.core.redis import redis_manager
 from app.api.v1.api import api_router
+from app.api.v1.endpoints.websocket import router as websocket_router
 from app.core.middleware import RequestIDMiddleware
 
 
@@ -48,7 +50,18 @@ async def lifespan(app: FastAPI):
     # Initialize database
     await init_db()
     
+    # Initialize Redis
+    await redis_manager.connect()
+    
+    # Start Redis message listener in background
+    import asyncio
+    listener_task = asyncio.create_task(redis_manager.listen_for_messages())
+    
     yield
+    
+    # Cleanup
+    listener_task.cancel()
+    await redis_manager.disconnect()
     
     logger.info("Shutting down Tasker API")
 
@@ -80,6 +93,9 @@ app.add_middleware(RequestIDMiddleware)
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Include WebSocket router directly (without API prefix)
+app.include_router(websocket_router)
 
 
 @app.get("/health")

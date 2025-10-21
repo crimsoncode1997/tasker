@@ -15,6 +15,18 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: tasker-redis-prod
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -22,6 +34,7 @@ services:
     container_name: tasker-backend-prod
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-tasker}:${POSTGRES_PASSWORD:-tasker_password}@postgres:5432/${POSTGRES_DB:-tasker_db}
+      REDIS_URL: redis://redis:6379
       SECRET_KEY: ${SECRET_KEY}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
@@ -33,6 +46,8 @@ services:
       - "8000:8000"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -56,3 +71,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

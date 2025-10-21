@@ -1,18 +1,26 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { boardsApi } from '@/services/boards'
 import { CreateBoardModal } from '@/components/CreateBoardModal'
+import { useNotifications } from '@/contexts/NotificationContext'
 
 export const DashboardPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const queryClient = useQueryClient()
+  const { refreshNotifications } = useNotifications()
 
   const { data: boards = [], isLoading } = useQuery({
     queryKey: ['boards'],
     queryFn: boardsApi.getBoards,
   })
+
+  // Refresh boards when notifications are updated (in case of new invitations)
+  useEffect(() => {
+    refreshNotifications()
+    queryClient.invalidateQueries({ queryKey: ['boards'] })
+  }, [refreshNotifications, queryClient])
 
   const createBoardMutation = useMutation({
     mutationFn: boardsApi.createBoard,

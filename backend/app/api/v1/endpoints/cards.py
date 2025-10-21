@@ -175,6 +175,102 @@ async def update_card(
     return await card_service.get_by_id(db, card.id)
 
 
+@router.patch("/{card_id}/assign/{user_id}", response_model=Card)
+async def assign_card(
+    card_id: UUID,
+    user_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Assign a card to a user."""
+    # Get card
+    card = await card_service.get_by_id(db, card_id)
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Card not found"
+        )
+    
+    # Check user access to board
+    has_access = await board_service.check_user_access(db, card.list.board_id, current_user.id)
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    # Check if user is a member of the board
+    user_role = await board_service.get_user_role(db, card.list.board_id, user_id)
+    if not user_role:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is not a member of this board"
+        )
+    
+    # Update card assignee
+    from app.schemas.card import CardUpdate
+    card_update = CardUpdate(assignee_id=user_id)
+    updated_card = await card_service.update(db, card, card_update)
+    
+    # Broadcast assignment via WebSocket
+    from app.core.redis import redis_manager
+    assignment_message = {
+        "type": "card_assigned",
+        "card_id": str(card_id),
+        "assignee_id": str(user_id),
+        "user_id": str(current_user.id),
+        "timestamp": updated_card.updated_at.isoformat()
+    }
+    await redis_manager.publish_board_update(str(card.list.board_id), assignment_message)
+    
+    logger.info("Card assigned", card_id=str(card_id), assignee_id=str(user_id), assigned_by=str(current_user.id))
+    
+    return await card_service.get_by_id(db, updated_card.id)
+
+
+@router.patch("/{card_id}/unassign", response_model=Card)
+async def unassign_card(
+    card_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Unassign a card from its current assignee."""
+    # Get card
+    card = await card_service.get_by_id(db, card_id)
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Card not found"
+        )
+    
+    # Check user access to board
+    has_access = await board_service.check_user_access(db, card.list.board_id, current_user.id)
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    # Update card to remove assignee
+    from app.schemas.card import CardUpdate
+    card_update = CardUpdate(assignee_id=None)
+    updated_card = await card_service.update(db, card, card_update)
+    
+    # Broadcast unassignment via WebSocket
+    from app.core.redis import redis_manager
+    unassignment_message = {
+        "type": "card_unassigned",
+        "card_id": str(card_id),
+        "user_id": str(current_user.id),
+        "timestamp": updated_card.updated_at.isoformat()
+    }
+    await redis_manager.publish_board_update(str(card.list.board_id), unassignment_message)
+    
+    logger.info("Card unassigned", card_id=str(card_id), unassigned_by=str(current_user.id))
+    
+    return await card_service.get_by_id(db, updated_card.id)
+
+
 @router.delete("/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_card(
     card_id: UUID,
