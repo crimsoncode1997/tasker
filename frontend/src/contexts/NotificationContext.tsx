@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { notificationsApi, Notification } from '@/services/notifications'
-import { GlobalWebSocketClient } from '@/lib/global-websocket'
+import { GlobalWebSocketClient } from '@/lib-custom/global-websocket'
 
 interface NotificationContextType {
   notifications: Notification[]

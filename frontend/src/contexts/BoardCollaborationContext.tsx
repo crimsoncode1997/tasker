@@ -2,7 +2,7 @@
  * Board collaboration context for real-time updates.
  */
 import React, { createContext, useContext, useCallback, useEffect, useState } from 'react';
-import { useBoardWebSocket, WebSocketMessage } from '@/lib/websocket';
+import { useBoardWebSocket, WebSocketMessage } from '@/lib-custom/websocket';
 import { Board, Card, List } from '@/types';
 
 interface BoardCollaborationContextType {

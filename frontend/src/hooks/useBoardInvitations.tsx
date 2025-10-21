@@ -3,7 +3,7 @@
  */
 import React, { useState, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '@/lib/api';
+import api from '@/lib-custom/api';
 import { Board } from '@/types';
 
 interface InviteUserRequest {

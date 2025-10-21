@@ -1,4 +1,4 @@
-import api from '@/lib/api'
+import api from '@/lib-custom/api'
 import { List, CreateListRequest, ReorderCardsRequest } from '@/types'
 
 export const listsApi = {

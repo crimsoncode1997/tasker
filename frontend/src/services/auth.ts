@@ -1,4 +1,4 @@
-import api from '@/lib/api'
+import api from '@/lib-custom/api'
 import { LoginRequest, RegisterRequest, AuthTokens, User } from '@/types'
 
 export const authApi = {

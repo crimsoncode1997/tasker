@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api from '@/lib/api';
+import api from '@/lib-custom/api';
 import { Card, User } from '@/types';
 import { UserIcon, XMarkIcon } from '@heroicons/react/24/outline';
 

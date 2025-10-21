@@ -1,4 +1,4 @@
-import api from '@/lib/api'
+import api from '@/lib-custom/api'
 
 export interface Notification {
   id: string
