@@ -16,6 +16,7 @@ export interface Board {
   updated_at: string
   owner: User
   lists: List[]
+  user_role?: string  // Role of the current user in this board
 }
 
 export interface List {

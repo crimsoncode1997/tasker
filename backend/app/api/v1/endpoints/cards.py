@@ -44,6 +44,25 @@ async def create_card(
     
     card = await card_service.create(db, card_in)
     
+    # Broadcast card creation to all connected users
+    from app.core.redis import redis_manager
+    broadcast_message = {
+        "type": "card_created",
+        "card_id": str(card.id),
+        "data": {
+            "id": str(card.id),
+            "title": card.title,
+            "description": card.description,
+            "list_id": str(card.list_id),
+            "position": card.position,
+            "assignee_id": str(card.assignee_id) if card.assignee_id else None,
+            "due_date": card.due_date.isoformat() if card.due_date else None
+        },
+        "user_id": str(current_user.id),
+        "timestamp": card.created_at.isoformat()
+    }
+    await redis_manager.publish_board_update(str(list_obj.board_id), broadcast_message)
+    
     # Return card with relationships
     return await card_service.get_by_id(db, card.id)
 

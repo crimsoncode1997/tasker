@@ -27,6 +27,11 @@ async def get_boards(
     """Get user's boards."""
     boards = await board_service.get_user_boards(db, current_user.id)
     
+    # Add user role to each board
+    for board in boards:
+        user_role = await board_service.get_user_role(db, board.id, current_user.id)
+        board.user_role = user_role
+    
     # Apply pagination
     return boards[skip:skip + limit]
 
@@ -65,6 +70,10 @@ async def get_board(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Board not found"
         )
+    
+    # Add user role
+    user_role = await board_service.get_user_role(db, board_id, current_user.id)
+    board.user_role = user_role
     
     return board
 

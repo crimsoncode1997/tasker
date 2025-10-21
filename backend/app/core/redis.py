@@ -13,6 +13,19 @@ from app.core.config import settings
 logger = structlog.get_logger()
 
 
+def is_websocket_connected(websocket: WebSocket) -> bool:
+    """Check if WebSocket connection is still active."""
+    try:
+        # Check if WebSocket has client_state attribute and is not disconnected
+        if hasattr(websocket, 'client_state'):
+            return websocket.client_state.name != 'DISCONNECTED'
+        # Fallback: assume connected if no state info available
+        return True
+    except Exception:
+        # If we can't determine the state, assume disconnected to be safe
+        return False
+
+
 class RedisManager:
     """Redis connection and pub/sub manager."""
     
@@ -86,24 +99,41 @@ class RedisManager:
     async def _broadcast_to_board(self, board_id: str, message: Dict[str, Any]):
         """Broadcast message to all WebSocket connections for a board."""
         if board_id not in self.websocket_connections:
+            logger.warning("No connections found for board", board_id=board_id)
             return
         
         connections = self.websocket_connections[board_id].copy()
         if not connections:
+            logger.warning("No active connections for board", board_id=board_id)
             return
         
-        # Send message to all connected clients
+        logger.info("Broadcasting message to board", board_id=board_id, connection_count=len(connections), message_type=message.get("type"))
+        
+        # Send message to all connected clients with connection state checking
         disconnected = set()
         for websocket in connections:
             try:
+                # Check if WebSocket is still open before sending
+                if not is_websocket_connected(websocket):
+                    logger.debug("Skipping disconnected WebSocket", board_id=board_id)
+                    disconnected.add(websocket)
+                    continue
+                
                 await websocket.send_text(json.dumps(message))
+                logger.debug("Message sent to WebSocket", board_id=board_id)
             except Exception as e:
-                logger.warning("Failed to send message to WebSocket", error=str(e))
+                # Handle specific WebSocket errors
+                if "ConnectionClosedError" in str(type(e)) or "ConnectionClosed" in str(type(e)):
+                    logger.debug("WebSocket connection closed", board_id=board_id, error=str(e))
+                else:
+                    logger.warning("Failed to send message to WebSocket", board_id=board_id, error=str(e))
                 disconnected.add(websocket)
         
         # Remove disconnected connections
         for websocket in disconnected:
             await self.remove_connection(board_id, websocket)
+        
+        logger.info("Broadcast completed", board_id=board_id, sent_to=len(connections) - len(disconnected), failed=len(disconnected))
     
     async def add_connection(self, board_id: str, websocket: WebSocket):
         """Add WebSocket connection for a board."""

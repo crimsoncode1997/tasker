@@ -94,21 +94,34 @@ export const DashboardPage: React.FC = () => {
                     {new Date(board.updated_at).toLocaleDateString()}
                   </span>
                 </div>
+                <div className="mt-2">
+                  {board.user_role === 'owner' ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      Owner
+                    </span>
+                  ) : board.user_role ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      {board.user_role === 'admin' ? 'Admin' : 'Member'} of {board.owner.full_name}'s board
+                    </span>
+                  ) : null}
+                </div>
               </Link>
               
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (confirm('Are you sure you want to delete this board?')) {
-                      deleteBoardMutation.mutate(board.id)
-                    }
-                  }}
-                  className="text-red-600 hover:text-red-700 text-sm"
-                >
-                  Delete
-                </button>
-              </div>
+              {board.user_role === 'owner' && (
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (confirm('Are you sure you want to delete this board?')) {
+                        deleteBoardMutation.mutate(board.id)
+                      }
+                    }}
+                    className="text-red-600 hover:text-red-700 text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

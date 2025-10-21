@@ -48,6 +48,8 @@ export function BoardCollaborationProvider({
   const [boardUpdates, setBoardUpdates] = useState<BoardUpdate[]>([]);
   
   const handleMessage = useCallback((message: WebSocketMessage) => {
+    console.log('Board collaboration message received:', message);
+    
     const update: BoardUpdate = {
       id: `${message.type}-${Date.now()}-${Math.random()}`,
       type: message.type,
@@ -60,21 +62,66 @@ export function BoardCollaborationProvider({
     onBoardUpdate?.(update);
 
     // Handle specific message types for real-time updates
-    if (message.type === 'card_assigned' || message.type === 'card_unassigned') {
-      // These will be handled by the individual components
-      console.log('Card assignment update:', message);
-    } else if (message.type === 'board_invitation') {
-      // Handle board invitation - refresh boards list
-      console.log('Board invitation received:', message);
-      // This will be handled by the notification system
-    } else if (message.type === 'board_state') {
-      // Handle initial board state - this should update the board data
-      console.log('Board state received:', message);
-      // The board state will be handled by the parent component
-    } else if (message.type === 'user_notification') {
-      // Handle global user notifications
-      console.log('User notification received:', message);
-      // This will be handled by the notification system
+    switch (message.type) {
+      case 'connection':
+        console.log('WebSocket connection established:', message);
+        break;
+      case 'board_state':
+        console.log('Board state received:', message);
+        // The board state will be handled by the parent component
+        break;
+      case 'card_moved':
+      case 'card_updated':
+      case 'card_assigned':
+      case 'card_unassigned':
+        console.log('Card update received:', message);
+        // These will be handled by the individual components
+        break;
+      case 'card_created':
+        console.log('Card created:', message);
+        // Trigger board data refresh
+        break;
+      case 'card_deleted':
+        console.log('Card deleted:', message);
+        // Trigger board data refresh
+        break;
+      case 'list_updated':
+        console.log('List update received:', message);
+        break;
+      case 'list_created':
+        console.log('List created:', message);
+        // Trigger board data refresh
+        break;
+      case 'list_deleted':
+        console.log('List deleted:', message);
+        // Trigger board data refresh
+        break;
+      case 'board_updated':
+        console.log('Board update received:', message);
+        break;
+      case 'board_deleted':
+        console.log('Board deleted:', message);
+        // Redirect to dashboard
+        if (message.redirect) {
+          window.location.href = '/';
+        }
+        break;
+      case 'user_typing':
+        console.log('User typing indicator:', message);
+        break;
+      case 'board_invitation':
+        console.log('Board invitation received:', message);
+        // This will be handled by the notification system
+        break;
+      case 'user_notification':
+        console.log('User notification received:', message);
+        // This will be handled by the notification system
+        break;
+      case 'error':
+        console.error('WebSocket error message:', message);
+        break;
+      default:
+        console.log('Unknown message type:', message.type, message);
     }
   }, [onBoardUpdate]);
 

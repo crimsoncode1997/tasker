@@ -27,7 +27,7 @@ export function useBoardInvitations(boardId: string) {
       const response = await api.post(`/boards/${boardId}/invite`, data);
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Invalidate board queries to refresh member list
       queryClient.invalidateQueries({ queryKey: ['board', boardId] });
       queryClient.invalidateQueries({ queryKey: ['boards'] });
@@ -36,20 +36,23 @@ export function useBoardInvitations(boardId: string) {
       setIsInviteModalOpen(false);
       setInviteEmail('');
       setInviteRole('member');
+      
+      // Show success message (you could add a toast notification here)
+      console.log('User invited successfully:', data.message);
     },
     onError: (error) => {
       console.error('Failed to invite user:', error);
     }
   });
 
-  const inviteUser = useCallback(async () => {
-    if (!inviteEmail.trim()) return;
+  const inviteUser = useCallback(async (email: string, role: 'member' | 'admin') => {
+    if (!email.trim()) return;
     
     await inviteUserMutation.mutateAsync({
-      email: inviteEmail.trim(),
-      role: inviteRole
+      email: email.trim(),
+      role: role
     });
-  }, [inviteEmail, inviteRole, inviteUserMutation]);
+  }, [inviteUserMutation]);
 
   const openInviteModal = useCallback(() => {
     setIsInviteModalOpen(true);

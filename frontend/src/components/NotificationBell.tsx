@@ -16,7 +16,11 @@ export const NotificationBell: React.FC = () => {
 
     // Handle different notification types
     if (notification.type === 'board_invitation' && notification.data?.board_id) {
-      navigate(`/boards/${notification.data.board_id}`)
+      navigate(`/board/${notification.data.board_id}`)
+    } else if (notification.type === 'card_assigned' && notification.data?.board_id) {
+      navigate(`/board/${notification.data.board_id}`)
+    } else if (notification.type === 'board_updated' && notification.data?.board_id) {
+      navigate(`/board/${notification.data.board_id}`)
     }
 
     setIsOpen(false)

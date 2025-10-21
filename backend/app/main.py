@@ -94,8 +94,8 @@ app.add_middleware(RequestIDMiddleware)
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-# Include WebSocket router directly (without API prefix)
-app.include_router(websocket_router)
+# Include WebSocket router with API prefix
+app.include_router(websocket_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/health")

@@ -36,18 +36,41 @@ class BoardService:
     
     async def get_user_boards(self, db: AsyncSession, user_id: UUID) -> List[Board]:
         """Get boards accessible by user (owned or member)."""
-        result = await db.execute(
+        # Get boards where user is owner
+        owned_boards_result = await db.execute(
             select(Board)
             .options(
                 selectinload(Board.owner),
                 selectinload(Board.lists).selectinload(ListModel.cards).selectinload(Card.assignee),
                 selectinload(Board.members).selectinload(BoardMember.user)
             )
-            .join(BoardMember, Board.id == BoardMember.board_id, isouter=True)
-            .where((Board.owner_id == user_id) | (BoardMember.user_id == user_id))
-            .order_by(Board.updated_at.desc())
+            .where(Board.owner_id == user_id)
         )
-        return list(result.scalars().all())
+        owned_boards = list(owned_boards_result.scalars().all())
+        
+        # Get boards where user is member (but not owner)
+        member_boards_result = await db.execute(
+            select(Board)
+            .options(
+                selectinload(Board.owner),
+                selectinload(Board.lists).selectinload(ListModel.cards).selectinload(Card.assignee),
+                selectinload(Board.members).selectinload(BoardMember.user)
+            )
+            .join(BoardMember, Board.id == BoardMember.board_id)
+            .where(
+                and_(
+                    BoardMember.user_id == user_id,
+                    Board.owner_id != user_id  # Exclude boards where user is owner
+                )
+            )
+        )
+        member_boards = list(member_boards_result.scalars().all())
+        
+        # Combine and sort by updated_at
+        all_boards = owned_boards + member_boards
+        all_boards.sort(key=lambda board: board.updated_at, reverse=True)
+        
+        return all_boards
     
     async def create(self, db: AsyncSession, board_in: BoardCreate, owner_id: UUID) -> Board:
         """Create a new board."""
@@ -61,14 +84,8 @@ class BoardService:
         await db.commit()
         await db.refresh(board)
         
-        # Add owner as admin member
-        member = BoardMember(
-            board_id=board.id,
-            user_id=owner_id,
-            role="owner"
-        )
-        db.add(member)
-        await db.commit()
+        # Note: Owner is not added as a member since they're already the owner
+        # Only add members who are not the owner
         
         logger.info("Board created", board_id=str(board.id), owner_id=str(owner_id))
         return board
@@ -96,13 +113,21 @@ class BoardService:
     
     async def check_user_access(self, db: AsyncSession, board_id: UUID, user_id: UUID) -> bool:
         """Check if user has access to board."""
+        # First check if user is the owner
         result = await db.execute(
-            select(Board)
-            .join(BoardMember, Board.id == BoardMember.board_id, isouter=True)
-            .where(
+            select(Board).where(
+                and_(Board.id == board_id, Board.owner_id == user_id)
+            )
+        )
+        if result.scalar_one_or_none():
+            return True
+        
+        # Then check if user is a member
+        result = await db.execute(
+            select(BoardMember).where(
                 and_(
-                    Board.id == board_id,
-                    (Board.owner_id == user_id) | (BoardMember.user_id == user_id)
+                    BoardMember.board_id == board_id,
+                    BoardMember.user_id == user_id
                 )
             )
         )

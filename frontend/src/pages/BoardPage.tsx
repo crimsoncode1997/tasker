@@ -47,9 +47,33 @@ export const BoardPage: React.FC = () => {
     // Handle real-time board updates
     console.log('Board update received:', update);
     
-    // Invalidate relevant queries to refresh data
-    if (update.type === 'card_moved' || update.type === 'card_updated') {
-      queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+    // Invalidate relevant queries to refresh data based on update type
+    switch (update.type) {
+      case 'card_moved':
+      case 'card_updated':
+      case 'card_assigned':
+      case 'card_unassigned':
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        break;
+      case 'card_created':
+      case 'card_deleted':
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        break;
+      case 'list_updated':
+      case 'list_created':
+      case 'list_deleted':
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        break;
+      case 'board_updated':
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        break;
+      case 'board_deleted':
+        // Redirect to dashboard
+        window.location.href = '/';
+        break;
+      default:
+        // For other update types, refresh board data
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
     }
   };
 
