@@ -104,7 +104,7 @@ export const BoardPage: React.FC = () => {
           </div>
         </div>
 
-        <BoardView board={board} />
+        <BoardView boardId={boardId!} />
 
         <CreateListModal
           isOpen={isCreateListModalOpen}

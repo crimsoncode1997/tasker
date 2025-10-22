@@ -119,9 +119,8 @@ export const ListColumn: React.FC<ListColumnProps> = ({ list, boardId, onCardCli
       <CreateCardModal
         isOpen={isCreateCardModalOpen}
         onClose={() => setIsCreateCardModalOpen(false)}
-        onSubmit={(data) => {
-          // Handle card creation
-          setIsCreateCardModalOpen(false)
+        onSubmit={() => {
+          // The modal handles its own mutation
         }}
         isLoading={false}
         listId={list.id}
