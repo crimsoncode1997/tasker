@@ -1,36 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { DndContext, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { ListColumn } from '@/components/ListColumn'
 import { CardModal } from '@/components/CardModal'
 import { Board, List, Card } from '@/types'
 import { cardsApi } from '@/services/cards'
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
-import { boardsApi } from '@/services/boards'
-import { useBoardCollaboration } from '@/contexts/BoardCollaborationContext'
-import { useWebSocketUpdate } from '@/contexts/WebSocketUpdateContext'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRealtimeBoard } from '@/hooks/useRealtimeBoard'
 
 interface BoardViewProps {
   boardId: string
 }
 
 export const BoardView: React.FC<BoardViewProps> = ({ boardId }) => {
-  const { forceUpdate } = useBoardCollaboration();
-  const { updateTrigger } = useWebSocketUpdate();
-  
-  // Fetch board data directly to ensure reactivity
-  const { data: board, isLoading, refetch } = useQuery({
-    queryKey: ['board', boardId],
-    queryFn: () => boardsApi.getBoard(boardId),
-    enabled: !!boardId,
-  })
-
-  // Force refetch when WebSocket updates are received
-  useEffect(() => {
-    if (forceUpdate > 0 || updateTrigger > 0) {
-      refetch();
-    }
-  }, [forceUpdate, updateTrigger, refetch]);
+  // Use the real-time board hook for automatic WebSocket updates
+  const { board, isLoading } = useRealtimeBoard(boardId);
 
   if (isLoading) {
     return (

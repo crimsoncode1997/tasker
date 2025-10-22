@@ -106,6 +106,19 @@ async def move_card(
         )
     
     card = await card_service.move_card(db, card_move)
+    
+    # Broadcast card move to all connected users
+    from app.core.redis import redis_manager
+    broadcast_message = {
+        "type": "card_moved",
+        "card_id": str(card.id),
+        "new_list_id": str(card.list_id),
+        "new_position": card.position,
+        "user_id": str(current_user.id),
+        "timestamp": card.updated_at.isoformat()
+    }
+    await redis_manager.publish_board_update(str(source_card.list.board_id), broadcast_message)
+    
     return await card_service.get_by_id(db, card.id)
 
 
@@ -140,6 +153,17 @@ async def reorder_cards(
     ]
     
     await card_service.reorder_cards(db, list_id, positions)
+    
+    # Broadcast card reorder to all connected users
+    from app.core.redis import redis_manager
+    broadcast_message = {
+        "type": "cards_reordered",
+        "list_id": str(list_id),
+        "positions": [{"card_id": str(p["card_id"]), "position": p["position"]} for p in positions],
+        "user_id": str(current_user.id),
+        "timestamp": ""
+    }
+    await redis_manager.publish_board_update(str(list_obj.board_id), broadcast_message)
 
 
 @router.get("/{card_id}", response_model=Card)
@@ -191,6 +215,26 @@ async def update_card(
         )
     
     card = await card_service.update(db, card, card_in)
+    
+    # Broadcast card update to all connected users
+    from app.core.redis import redis_manager
+    broadcast_message = {
+        "type": "card_updated",
+        "card_id": str(card.id),
+        "data": {
+            "id": str(card.id),
+            "title": card.title,
+            "description": card.description,
+            "list_id": str(card.list_id),
+            "position": card.position,
+            "assignee_id": str(card.assignee_id) if card.assignee_id else None,
+            "due_date": card.due_date.isoformat() if card.due_date else None
+        },
+        "user_id": str(current_user.id),
+        "timestamp": card.updated_at.isoformat()
+    }
+    await redis_manager.publish_board_update(str(card.list.board_id), broadcast_message)
+    
     return await card_service.get_by_id(db, card.id)
 
 
@@ -312,5 +356,18 @@ async def delete_card(
             detail="Not enough permissions"
         )
     
+    # Get board_id before deletion
+    board_id = str(card.list.board_id)
+    
     await card_service.delete(db, card)
+    
+    # Broadcast card deletion to all connected users
+    from app.core.redis import redis_manager
+    broadcast_message = {
+        "type": "card_deleted",
+        "card_id": str(card_id),
+        "user_id": str(current_user.id),
+        "timestamp": ""
+    }
+    await redis_manager.publish_board_update(board_id, broadcast_message)
 

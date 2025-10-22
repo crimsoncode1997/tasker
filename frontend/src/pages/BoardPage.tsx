@@ -6,6 +6,7 @@ import { BoardView } from '@/components/BoardView'
 import { CreateListModal } from '@/components/CreateListModal'
 import { CollaborationStatus } from '@/components/CollaborationStatus'
 import { BoardMemberAvatars } from '@/components/BoardMemberAvatars'
+import { WebSocketStatus } from '@/components/WebSocketStatus'
 import { BoardCollaborationProvider } from '@/contexts/BoardCollaborationContext'
 import { useBoardInvitations, InviteUserModal } from '@/hooks/useBoardInvitations'
 import { useState } from 'react'
@@ -76,7 +77,10 @@ export const BoardPage: React.FC = () => {
                 {board.description && (
                   <p className="text-gray-600 mt-1">{board.description}</p>
                 )}
-                <CollaborationStatus className="mt-2" />
+                <div className="mt-2 flex items-center space-x-4">
+                  <CollaborationStatus />
+                  <WebSocketStatus />
+                </div>
               </div>
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">

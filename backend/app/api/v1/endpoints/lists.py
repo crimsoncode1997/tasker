@@ -202,3 +202,14 @@ async def reorder_lists(
     ]
     
     await list_service.reorder_lists(db, board_id, positions)
+    
+    # Broadcast list reorder to all connected users
+    from app.core.redis import redis_manager
+    broadcast_message = {
+        "type": "lists_reordered",
+        "board_id": str(board_id),
+        "positions": [{"list_id": str(p["list_id"]), "position": p["position"]} for p in positions],
+        "user_id": str(current_user.id),
+        "timestamp": ""
+    }
+    await redis_manager.publish_board_update(str(board_id), broadcast_message)

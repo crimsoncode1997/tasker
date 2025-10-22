@@ -84,6 +84,7 @@ export function BoardCollaborationProvider({
       case 'card_updated':
       case 'card_assigned':
       case 'card_unassigned':
+      case 'cards_reordered':
         console.log('Card update received:', message);
         // Invalidate and refetch board queries to refresh data
         queryClient.invalidateQueries({ queryKey: ['board', boardId] });
@@ -105,6 +106,7 @@ export function BoardCollaborationProvider({
         queryClient.refetchQueries({ queryKey: ['board', boardId] });
         break;
       case 'list_updated':
+      case 'lists_reordered':
         console.log('List update received:', message);
         queryClient.invalidateQueries({ queryKey: ['board', boardId] });
         queryClient.invalidateQueries({ queryKey: ['boards'] });

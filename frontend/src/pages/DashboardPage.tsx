@@ -1,30 +1,20 @@
 import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { boardsApi } from '@/services/boards'
 import { CreateBoardModal } from '@/components/CreateBoardModal'
 import { BoardMemberAvatars } from '@/components/BoardMemberAvatars'
 import { useNotifications } from '@/contexts/NotificationContext'
-import { useWebSocketUpdate } from '@/contexts/WebSocketUpdateContext'
+import { useRealtimeBoards } from '@/hooks/useRealtimeBoards'
 
 export const DashboardPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const queryClient = useQueryClient()
   const { refreshNotifications } = useNotifications()
-  const { updateTrigger } = useWebSocketUpdate()
-
-  const { data: boards = [], isLoading, refetch } = useQuery({
-    queryKey: ['boards'],
-    queryFn: boardsApi.getBoards,
-  })
-
-  // Refetch boards when WebSocket updates are received
-  useEffect(() => {
-    if (updateTrigger > 0) {
-      refetch();
-    }
-  }, [updateTrigger, refetch]);
+  
+  // Use the real-time boards hook for automatic WebSocket updates
+  const { boards, isLoading } = useRealtimeBoards()
 
   // Refresh boards when notifications are updated (in case of new invitations)
   useEffect(() => {
