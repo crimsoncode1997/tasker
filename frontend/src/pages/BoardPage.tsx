@@ -5,6 +5,7 @@ import { listsApi } from '@/services/lists'
 import { BoardView } from '@/components/BoardView'
 import { CreateListModal } from '@/components/CreateListModal'
 import { CollaborationStatus } from '@/components/CollaborationStatus'
+import { BoardMemberAvatars } from '@/components/BoardMemberAvatars'
 import { BoardCollaborationProvider } from '@/contexts/BoardCollaborationContext'
 import { useBoardInvitations, InviteUserModal } from '@/hooks/useBoardInvitations'
 import { useState } from 'react'
@@ -44,37 +45,8 @@ export const BoardPage: React.FC = () => {
   })
 
   const handleBoardUpdate = (update: any) => {
-    // Handle real-time board updates
+    // Handle real-time board updates - now handled by BoardCollaborationContext
     console.log('Board update received:', update);
-    
-    // Invalidate relevant queries to refresh data based on update type
-    switch (update.type) {
-      case 'card_moved':
-      case 'card_updated':
-      case 'card_assigned':
-      case 'card_unassigned':
-        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
-        break;
-      case 'card_created':
-      case 'card_deleted':
-        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
-        break;
-      case 'list_updated':
-      case 'list_created':
-      case 'list_deleted':
-        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
-        break;
-      case 'board_updated':
-        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
-        break;
-      case 'board_deleted':
-        // Redirect to dashboard
-        window.location.href = '/';
-        break;
-      default:
-        // For other update types, refresh board data
-        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
-    }
   };
 
   if (isLoading) {
@@ -97,14 +69,24 @@ export const BoardPage: React.FC = () => {
     <BoardCollaborationProvider boardId={boardId!} onBoardUpdate={handleBoardUpdate}>
       <div>
         <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{board.title}</h1>
-            {board.description && (
-              <p className="text-gray-600 mt-1">{board.description}</p>
-            )}
-            <CollaborationStatus className="mt-2" />
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{board.title}</h1>
+                {board.description && (
+                  <p className="text-gray-600 mt-1">{board.description}</p>
+                )}
+                <CollaborationStatus className="mt-2" />
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-500">Members:</span>
+                  <BoardMemberAvatars boardId={boardId!} size="md" />
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 ml-4">
             <button
               onClick={openInviteModal}
               className="btn btn-secondary flex items-center space-x-2"

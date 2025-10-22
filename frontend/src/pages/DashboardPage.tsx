@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { boardsApi } from '@/services/boards'
 import { CreateBoardModal } from '@/components/CreateBoardModal'
+import { BoardMemberAvatars } from '@/components/BoardMemberAvatars'
 import { useNotifications } from '@/contexts/NotificationContext'
 
 export const DashboardPage: React.FC = () => {
@@ -94,16 +95,19 @@ export const DashboardPage: React.FC = () => {
                     {new Date(board.updated_at).toLocaleDateString()}
                   </span>
                 </div>
-                <div className="mt-2">
-                  {board.user_role === 'owner' ? (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Owner
-                    </span>
-                  ) : board.user_role ? (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      {board.user_role === 'admin' ? 'Admin' : 'Member'} of {board.owner.full_name}'s board
-                    </span>
-                  ) : null}
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    {board.user_role === 'owner' ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Owner
+                      </span>
+                    ) : board.user_role ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {board.user_role === 'admin' ? 'Admin' : 'Member'} of {board.owner.full_name}'s board
+                      </span>
+                    ) : null}
+                  </div>
+                  <BoardMemberAvatars boardId={board.id} size="sm" />
                 </div>
               </Link>
               

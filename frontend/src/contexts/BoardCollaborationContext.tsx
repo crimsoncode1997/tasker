@@ -2,6 +2,7 @@
  * Board collaboration context for real-time updates.
  */
 import React, { createContext, useContext, useCallback, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useBoardWebSocket, WebSocketMessage } from '@/lib-custom/websocket';
 import { Board, Card, List } from '@/types';
 
@@ -46,6 +47,7 @@ export function BoardCollaborationProvider({
   onBoardUpdate 
 }: BoardCollaborationProviderProps) {
   const [boardUpdates, setBoardUpdates] = useState<BoardUpdate[]>([]);
+  const queryClient = useQueryClient();
   
   const handleMessage = useCallback((message: WebSocketMessage) => {
     console.log('Board collaboration message received:', message);
@@ -75,29 +77,43 @@ export function BoardCollaborationProvider({
       case 'card_assigned':
       case 'card_unassigned':
         console.log('Card update received:', message);
-        // These will be handled by the individual components
+        // Invalidate board and card queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        queryClient.invalidateQueries({ queryKey: ['cards'] });
         break;
       case 'card_created':
         console.log('Card created:', message);
         // Trigger board data refresh
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        queryClient.invalidateQueries({ queryKey: ['cards'] });
         break;
       case 'card_deleted':
         console.log('Card deleted:', message);
         // Trigger board data refresh
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        queryClient.invalidateQueries({ queryKey: ['cards'] });
         break;
       case 'list_updated':
         console.log('List update received:', message);
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        queryClient.invalidateQueries({ queryKey: ['lists'] });
         break;
       case 'list_created':
         console.log('List created:', message);
         // Trigger board data refresh
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        queryClient.invalidateQueries({ queryKey: ['lists'] });
         break;
       case 'list_deleted':
         console.log('List deleted:', message);
         // Trigger board data refresh
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        queryClient.invalidateQueries({ queryKey: ['lists'] });
         break;
       case 'board_updated':
         console.log('Board update received:', message);
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
+        queryClient.invalidateQueries({ queryKey: ['boards'] });
         break;
       case 'board_deleted':
         console.log('Board deleted:', message);
@@ -111,19 +127,24 @@ export function BoardCollaborationProvider({
         break;
       case 'board_invitation':
         console.log('Board invitation received:', message);
-        // This will be handled by the notification system
+        // Invalidate board members and notifications
+        queryClient.invalidateQueries({ queryKey: ['board-members', boardId] });
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
         break;
       case 'user_notification':
         console.log('User notification received:', message);
         // This will be handled by the notification system
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
         break;
       case 'error':
         console.error('WebSocket error message:', message);
         break;
       default:
         console.log('Unknown message type:', message.type, message);
+        // For unknown message types, refresh board data as a fallback
+        queryClient.invalidateQueries({ queryKey: ['board', boardId] });
     }
-  }, [onBoardUpdate]);
+  }, [boardId, onBoardUpdate, queryClient]);
 
   const { isConnected, sendMessage } = useBoardWebSocket(boardId, {
     onMessage: handleMessage
