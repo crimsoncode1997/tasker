@@ -1,17 +1,52 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { DndContext, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { ListColumn } from '@/components/ListColumn'
 import { CardModal } from '@/components/CardModal'
 import { Board, List, Card } from '@/types'
 import { cardsApi } from '@/services/cards'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
+import { boardsApi } from '@/services/boards'
+import { useBoardCollaboration } from '@/contexts/BoardCollaborationContext'
+import { useWebSocketUpdate } from '@/contexts/WebSocketUpdateContext'
 
 interface BoardViewProps {
-  board: Board
+  boardId: string
 }
 
-export const BoardView: React.FC<BoardViewProps> = ({ board }) => {
+export const BoardView: React.FC<BoardViewProps> = ({ boardId }) => {
+  const { forceUpdate } = useBoardCollaboration();
+  const { updateTrigger } = useWebSocketUpdate();
+  
+  // Fetch board data directly to ensure reactivity
+  const { data: board, isLoading, refetch } = useQuery({
+    queryKey: ['board', boardId],
+    queryFn: () => boardsApi.getBoard(boardId),
+    enabled: !!boardId,
+  })
+
+  // Force refetch when WebSocket updates are received
+  useEffect(() => {
+    if (forceUpdate > 0 || updateTrigger > 0) {
+      refetch();
+    }
+  }, [forceUpdate, updateTrigger, refetch]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      </div>
+    )
+  }
+
+  if (!board) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-xl font-semibold text-gray-900">Board not found</h2>
+      </div>
+    )
+  }
   const [activeCard, setActiveCard] = useState<Card | null>(null)
   const [selectedCard, setSelectedCard] = useState<Card | null>(null)
   const queryClient = useQueryClient()
@@ -99,6 +134,23 @@ export const BoardView: React.FC<BoardViewProps> = ({ board }) => {
     setActiveCard(card)
   }
 
+  const handleCardUpdate = (updatedCard: Card) => {
+    // Update the card in the board data
+    queryClient.setQueryData<Board>(['board', board.id], (oldBoard) => {
+      if (!oldBoard) return oldBoard;
+      
+      return {
+        ...oldBoard,
+        lists: oldBoard.lists.map(list => ({
+          ...list,
+          cards: list.cards.map(card => 
+            card.id === updatedCard.id ? updatedCard : card
+          )
+        }))
+      };
+    });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveCard(null)
@@ -179,6 +231,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ board }) => {
                 list={list}
                 boardId={board.id}
                 onCardClick={setSelectedCard}
+                onCardUpdate={handleCardUpdate}
               />
             ))}
           </SortableContext>

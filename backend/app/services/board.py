@@ -36,18 +36,41 @@ class BoardService:
     
     async def get_user_boards(self, db: AsyncSession, user_id: UUID) -> List[Board]:
         """Get boards accessible by user (owned or member)."""
-        result = await db.execute(
+        # Get boards where user is owner
+        owned_boards_result = await db.execute(
             select(Board)
             .options(
                 selectinload(Board.owner),
                 selectinload(Board.lists).selectinload(ListModel.cards).selectinload(Card.assignee),
                 selectinload(Board.members).selectinload(BoardMember.user)
             )
-            .join(BoardMember, Board.id == BoardMember.board_id, isouter=True)
-            .where((Board.owner_id == user_id) | (BoardMember.user_id == user_id))
-            .order_by(Board.updated_at.desc())
+            .where(Board.owner_id == user_id)
         )
-        return list(result.scalars().all())
+        owned_boards = list(owned_boards_result.scalars().all())
+        
+        # Get boards where user is member (but not owner)
+        member_boards_result = await db.execute(
+            select(Board)
+            .options(
+                selectinload(Board.owner),
+                selectinload(Board.lists).selectinload(ListModel.cards).selectinload(Card.assignee),
+                selectinload(Board.members).selectinload(BoardMember.user)
+            )
+            .join(BoardMember, Board.id == BoardMember.board_id)
+            .where(
+                and_(
+                    BoardMember.user_id == user_id,
+                    Board.owner_id != user_id  # Exclude boards where user is owner
+                )
+            )
+        )
+        member_boards = list(member_boards_result.scalars().all())
+        
+        # Combine and sort by updated_at
+        all_boards = owned_boards + member_boards
+        all_boards.sort(key=lambda board: board.updated_at, reverse=True)
+        
+        return all_boards
     
     async def create(self, db: AsyncSession, board_in: BoardCreate, owner_id: UUID) -> Board:
         """Create a new board."""
@@ -61,14 +84,8 @@ class BoardService:
         await db.commit()
         await db.refresh(board)
         
-        # Add owner as admin member
-        member = BoardMember(
-            board_id=board.id,
-            user_id=owner_id,
-            role="owner"
-        )
-        db.add(member)
-        await db.commit()
+        # Note: Owner is not added as a member since they're already the owner
+        # Only add members who are not the owner
         
         logger.info("Board created", board_id=str(board.id), owner_id=str(owner_id))
         return board
@@ -96,13 +113,21 @@ class BoardService:
     
     async def check_user_access(self, db: AsyncSession, board_id: UUID, user_id: UUID) -> bool:
         """Check if user has access to board."""
+        # First check if user is the owner
         result = await db.execute(
-            select(Board)
-            .join(BoardMember, Board.id == BoardMember.board_id, isouter=True)
-            .where(
+            select(Board).where(
+                and_(Board.id == board_id, Board.owner_id == user_id)
+            )
+        )
+        if result.scalar_one_or_none():
+            return True
+        
+        # Then check if user is a member
+        result = await db.execute(
+            select(BoardMember).where(
                 and_(
-                    Board.id == board_id,
-                    (Board.owner_id == user_id) | (BoardMember.user_id == user_id)
+                    BoardMember.board_id == board_id,
+                    BoardMember.user_id == user_id
                 )
             )
         )
@@ -127,7 +152,7 @@ class BoardService:
         member = result.scalar_one_or_none()
         return member.role if member else None
     
-    async def invite_user(self, db: AsyncSession, board_id: UUID, email: str, role: str = "member") -> None:
+    async def invite_user(self, db: AsyncSession, board_id: UUID, email: str, role: str = "member", inviter_id: UUID = None) -> None:
         """Invite user to board by email."""
         # Get user by email
         result = await db.execute(select(User).where(User.email == email))
@@ -137,6 +162,13 @@ class BoardService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
+            )
+        
+        # Check if trying to invite self
+        if inviter_id and user.id == inviter_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot invite yourself to the board"
             )
         
         # Check if already a member
@@ -161,7 +193,50 @@ class BoardService:
         db.add(member)
         await db.commit()
         
-        logger.info("User invited to board", board_id=str(board_id), user_id=str(user.id), role=role)
+        # Create notification in database
+        from app.services.notification import notification_service
+        board = await self.get_by_id(db, board_id)
+        await notification_service.create_notification(
+            db=db,
+            user_id=user.id,
+            notification_type="board_invitation",
+            title="You've been invited to a board",
+            message=f"You have been added to board '{board.title}'",
+            data={
+                "board_id": str(board_id),
+                "board_title": board.title,
+                "role": role,
+                "inviter_id": str(inviter_id) if inviter_id else None
+            }
+        )
+        
+        # Send WebSocket notification to the invited user
+        from app.core.redis import redis_manager
+        notification_message = {
+            "type": "board_invitation",
+            "board_id": str(board_id),
+            "user_id": str(user.id),
+            "role": role,
+            "message": f"You have been added to board {board.title}",
+            "inviter_id": str(inviter_id) if inviter_id else None
+        }
+        await redis_manager.publish_board_update(str(board_id), notification_message)
+        
+        # Also send a global notification to the user (not board-specific)
+        global_notification = {
+            "type": "user_notification",
+            "user_id": str(user.id),
+            "notification": {
+                "type": "board_invitation",
+                "title": "You've been invited to a board",
+                "message": f"You have been added to board '{board.title}'",
+                "board_id": str(board_id),
+                "action": "view_board"
+            }
+        }
+        await redis_manager.publish_board_update(f"user:{user.id}", global_notification)
+        
+        logger.info("User invited to board", board_id=str(board_id), user_id=str(user.id), role=role, inviter_id=str(inviter_id))
 
 
 # Create service instance

@@ -1,18 +1,36 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { boardsApi } from '@/services/boards'
 import { CreateBoardModal } from '@/components/CreateBoardModal'
+import { BoardMemberAvatars } from '@/components/BoardMemberAvatars'
+import { useNotifications } from '@/contexts/NotificationContext'
+import { useWebSocketUpdate } from '@/contexts/WebSocketUpdateContext'
 
 export const DashboardPage: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const queryClient = useQueryClient()
+  const { refreshNotifications } = useNotifications()
+  const { updateTrigger } = useWebSocketUpdate()
 
-  const { data: boards = [], isLoading } = useQuery({
+  const { data: boards = [], isLoading, refetch } = useQuery({
     queryKey: ['boards'],
     queryFn: boardsApi.getBoards,
   })
+
+  // Refetch boards when WebSocket updates are received
+  useEffect(() => {
+    if (updateTrigger > 0) {
+      refetch();
+    }
+  }, [updateTrigger, refetch]);
+
+  // Refresh boards when notifications are updated (in case of new invitations)
+  useEffect(() => {
+    refreshNotifications()
+    queryClient.invalidateQueries({ queryKey: ['boards'] })
+  }, [refreshNotifications, queryClient])
 
   const createBoardMutation = useMutation({
     mutationFn: boardsApi.createBoard,
@@ -86,21 +104,37 @@ export const DashboardPage: React.FC = () => {
                     {new Date(board.updated_at).toLocaleDateString()}
                   </span>
                 </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    {board.user_role === 'owner' ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Owner
+                      </span>
+                    ) : board.user_role ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {board.user_role === 'admin' ? 'Admin' : 'Member'} of {board.owner.full_name}'s board
+                      </span>
+                    ) : null}
+                  </div>
+                  <BoardMemberAvatars boardId={board.id} size="sm" />
+                </div>
               </Link>
               
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    if (confirm('Are you sure you want to delete this board?')) {
-                      deleteBoardMutation.mutate(board.id)
-                    }
-                  }}
-                  className="text-red-600 hover:text-red-700 text-sm"
-                >
-                  Delete
-                </button>
-              </div>
+              {board.user_role === 'owner' && (
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (confirm('Are you sure you want to delete this board?')) {
+                        deleteBoardMutation.mutate(board.id)
+                      }
+                    }}
+                    className="text-red-600 hover:text-red-700 text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

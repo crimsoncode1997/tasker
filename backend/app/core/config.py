@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://tasker:tasker_password@localhost:5432/tasker_db"
     
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379"
+    
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",

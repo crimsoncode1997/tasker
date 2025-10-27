@@ -27,6 +27,11 @@ async def get_boards(
     """Get user's boards."""
     boards = await board_service.get_user_boards(db, current_user.id)
     
+    # Add user role to each board
+    for board in boards:
+        user_role = await board_service.get_user_role(db, board.id, current_user.id)
+        board.user_role = user_role
+    
     # Apply pagination
     return boards[skip:skip + limit]
 
@@ -65,6 +70,10 @@ async def get_board(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Board not found"
         )
+    
+    # Add user role
+    user_role = await board_service.get_user_role(db, board_id, current_user.id)
+    board.user_role = user_role
     
     return board
 
@@ -128,6 +137,52 @@ async def delete_board(
     await board_service.delete(db, board)
 
 
+@router.get("/{board_id}/members")
+async def get_board_members(
+    board_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get board members."""
+    # Check user access to board
+    has_access = await board_service.check_user_access(db, board_id, current_user.id)
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    # Get board with members
+    board = await board_service.get_by_id(db, board_id)
+    if not board:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Board not found"
+        )
+    
+    # Return members with user details
+    members = []
+    for member in board.members:
+        members.append({
+            "id": str(member.user.id),
+            "email": member.user.email,
+            "full_name": member.user.full_name,
+            "role": member.role,
+            "joined_at": member.joined_at.isoformat()
+        })
+    
+    # Add owner
+    members.append({
+        "id": str(board.owner.id),
+        "email": board.owner.email,
+        "full_name": board.owner.full_name,
+        "role": "owner",
+        "joined_at": board.created_at.isoformat()
+    })
+    
+    return {"members": members}
+
+
 @router.post("/{board_id}/invite", status_code=status.HTTP_201_CREATED)
 async def invite_user_to_board(
     board_id: UUID,
@@ -152,5 +207,5 @@ async def invite_user_to_board(
             detail="Board not found"
         )
     
-    await board_service.invite_user(db, board_id, invite_data.email, invite_data.role)
+    await board_service.invite_user(db, board_id, invite_data.email, invite_data.role, current_user.id)
 

@@ -35,6 +35,23 @@ async def create_list(
     
     list_obj = await list_service.create(db, list_in)
     
+    # Broadcast list creation to all connected users
+    from app.core.redis import redis_manager
+    broadcast_message = {
+        "type": "list_created",
+        "list_id": str(list_obj.id),
+        "data": {
+            "id": str(list_obj.id),
+            "title": list_obj.title,
+            "position": list_obj.position,
+            "board_id": str(list_obj.board_id),
+            "cards": []
+        },
+        "user_id": str(current_user.id),
+        "timestamp": list_obj.created_at.isoformat()
+    }
+    await redis_manager.publish_board_update(str(list_in.board_id), broadcast_message)
+    
     # Return list with relationships
     return await list_service.get_by_id(db, list_obj.id)
 
@@ -96,6 +113,23 @@ async def update_list(
         )
     
     list_obj = await list_service.update(db, list_obj, list_in)
+    
+    # Broadcast list update to all connected users
+    from app.core.redis import redis_manager
+    broadcast_message = {
+        "type": "list_updated",
+        "list_id": str(list_obj.id),
+        "data": {
+            "id": str(list_obj.id),
+            "title": list_obj.title,
+            "position": list_obj.position,
+            "board_id": str(list_obj.board_id)
+        },
+        "user_id": str(current_user.id),
+        "timestamp": list_obj.updated_at.isoformat()
+    }
+    await redis_manager.publish_board_update(str(list_obj.board_id), broadcast_message)
+    
     return await list_service.get_by_id(db, list_obj.id)
 
 
@@ -129,7 +163,20 @@ async def delete_list(
             detail="Not enough permissions to delete list"
         )
     
+    # Get board_id before deletion
+    board_id = str(list_obj.board_id)
+    
     await list_service.delete(db, list_obj)
+    
+    # Broadcast list deletion to all connected users
+    from app.core.redis import redis_manager
+    broadcast_message = {
+        "type": "list_deleted",
+        "list_id": str(list_id),
+        "user_id": str(current_user.id),
+        "timestamp": ""
+    }
+    await redis_manager.publish_board_update(board_id, broadcast_message)
 
 
 @router.patch("/reorder", status_code=status.HTTP_200_OK)

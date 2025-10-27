@@ -41,6 +41,7 @@ class Board(BoardInDB):
     """Schema for board response."""
     owner: User
     lists: List[ListSchema] = Field(default_factory=list)
+    user_role: Optional[str] = None  # Role of the current user in this board
     
     model_config = ConfigDict(from_attributes=True)
 
