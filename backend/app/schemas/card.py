@@ -62,3 +62,11 @@ class CardReorder(BaseModel):
     """Schema for reordering cards within a list."""
     card_id: UUID
     position: float
+    
+    
+class BoardCardsResponse(BaseModel):
+    """Schema for returning all cards from a specific board."""
+    board_id: UUID
+    cards: list[Card]
+
+    model_config = ConfigDict(from_attributes=True)

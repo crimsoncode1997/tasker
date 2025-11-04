@@ -24,5 +24,10 @@ export const cardsApi = {
   reorderCards: async (listId: string, positions: ReorderCardsRequest[]): Promise<void> => {
     await api.patch(`/cards/reorder?list_id=${listId}`, positions)
   },
+  
+  getCardsByBoard: async (boardId: string): Promise<Card[]> => {
+    const response = await api.get(`/cards/board/${boardId}`)
+    return response.data
+  },
 }
 

@@ -8,6 +8,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { BoardPage } from '@/pages/BoardPage'
+import { CalendarPage } from '@/pages/CalendarPage'
 
 function App() {
   return (
@@ -24,7 +25,9 @@ function App() {
                   <Layout>
                     <Routes>
                       <Route path="/" element={<DashboardPage />} />
-                      <Route path="/board/:boardId" element={<BoardPage />} />
+                      <Route path="/board/:boardId" element={<BoardPage />}>
+                        <Route path="calendar" element={<CalendarPage />} />
+                      </Route>
                     </Routes>
                   </Layout>
                 </ProtectedRoute>
@@ -38,4 +41,3 @@ function App() {
 }
 
 export default App
-

@@ -174,6 +174,16 @@ class CardService:
             .limit(1)
         )
         return result.scalar_one_or_none()
+    
+    async def get_by_board_id(self, db: AsyncSession, board_id: UUID):
+        query = (
+            select(Card)
+            .join(ListModel)
+            .where(ListModel.board_id == board_id)
+            .order_by(Card.created_at)
+        )
+        result = await db.execute(query)
+        return result.scalars().all()
 
 
 # Create service instance

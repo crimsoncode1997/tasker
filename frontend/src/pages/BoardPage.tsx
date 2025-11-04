@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { useParams, Link, Outlet, Routes, Route } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { boardsApi } from '@/services/boards'
 import { listsApi } from '@/services/lists'
@@ -10,13 +10,13 @@ import { BoardCollaborationProvider } from '@/contexts/BoardCollaborationContext
 import { useBoardInvitations, InviteUserModal } from '@/hooks/useBoardInvitations'
 import { useState } from 'react'
 import { PlusIcon, UserPlusIcon } from '@heroicons/react/24/outline'
+import { CalendarPage } from './CalendarPage'
 
 export const BoardPage: React.FC = () => {
   const { boardId } = useParams<{ boardId: string }>()
   const [isCreateListModalOpen, setIsCreateListModalOpen] = useState(false)
   const queryClient = useQueryClient()
 
-  // Board invitation hooks
   const {
     inviteEmail,
     setInviteEmail,
@@ -44,11 +44,6 @@ export const BoardPage: React.FC = () => {
     },
   })
 
-  const handleBoardUpdate = (update: any) => {
-    // Handle real-time board updates - now handled by BoardCollaborationContext
-    console.log('Board update received:', update);
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -58,53 +53,47 @@ export const BoardPage: React.FC = () => {
   }
 
   if (!board) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-900">Board not found</h2>
-      </div>
-    )
+    return <div className="text-center py-12"><h2>Board not found</h2></div>
   }
 
   return (
-    <BoardCollaborationProvider boardId={boardId!} onBoardUpdate={handleBoardUpdate}>
+    <BoardCollaborationProvider boardId={boardId!}>
       <div>
+        {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <div className="flex-1">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{board.title}</h1>
-                {board.description && (
-                  <p className="text-gray-600 mt-1">{board.description}</p>
-                )}
-                <CollaborationStatus className="mt-2" />
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-500">Members:</span>
-                  <BoardMemberAvatars boardId={boardId!} size="md" />
-                </div>
-              </div>
-            </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{board.title}</h1>
+            {board.description && <p className="text-gray-600">{board.description}</p>}
+            <CollaborationStatus className="mt-2" />
           </div>
-          <div className="flex space-x-2 ml-4">
-            <button
-              onClick={openInviteModal}
-              className="btn btn-secondary flex items-center space-x-2"
-            >
+
+          <div className="flex space-x-2">
+            <button onClick={openInviteModal} className="btn btn-secondary flex items-center space-x-2">
               <UserPlusIcon className="w-5 h-5" />
               <span>Invite</span>
             </button>
-            <button
-              onClick={() => setIsCreateListModalOpen(true)}
-              className="btn btn-primary flex items-center space-x-2"
-            >
+            <button onClick={() => setIsCreateListModalOpen(true)} className="btn btn-primary flex items-center space-x-2">
               <PlusIcon className="w-5 h-5" />
               <span>Add List</span>
             </button>
           </div>
         </div>
 
-        <BoardView boardId={boardId!} />
+        {/* Tabs */}
+        <div className="flex gap-6 mb-6 border-b pb-2">
+          <Link to={`/board/${boardId}`} className="text-blue-600 hover:underline">
+            Board
+          </Link>
+          <Link to={`/board/${boardId}/calendar`} className="text-blue-600 hover:underline">
+            Calendar
+          </Link>
+        </div>
+
+        {/* Routes for board view and calendar */}
+        <Routes>
+          <Route path="/" element={<BoardView boardId={boardId!} />} />
+          <Route path="calendar" element={<CalendarPage />} />
+        </Routes>
 
         <CreateListModal
           isOpen={isCreateListModalOpen}
@@ -124,4 +113,3 @@ export const BoardPage: React.FC = () => {
     </BoardCollaborationProvider>
   )
 }
-
