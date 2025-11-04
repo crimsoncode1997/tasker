@@ -36,7 +36,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notifications'],
     queryFn: () => notificationsApi.getNotifications(),
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 15000, // Refetch every 15 seconds
   })
 
   // Fetch unread count

@@ -1,3 +1,4 @@
+// tasker/frontend/src/components/ListColumn.tsx
 import { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -7,6 +8,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { cardsApi } from '@/services/cards'
 import { CardItem } from '@/components/CardItem'
 import { CreateCardModal } from '@/components/CreateCardModal'
+import { CardModal } from '@/components/CardModal'  // ← ADD
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { listsApi } from '@/services/lists'
@@ -14,12 +16,12 @@ import { listsApi } from '@/services/lists'
 interface ListColumnProps {
   list: List
   boardId: string
-  onCardClick: (card: Card) => void
   onCardUpdate?: (card: Card) => void
 }
 
-export const ListColumn: React.FC<ListColumnProps> = ({ list, boardId, onCardClick, onCardUpdate }) => {
+export const ListColumn: React.FC<ListColumnProps> = ({ list, boardId, onCardUpdate }) => {
   const [isCreateCardModalOpen, setIsCreateCardModalOpen] = useState(false)
+  const [modalCard, setModalCard] = useState<Card | null>(null)  // ← MODAL STATE
   const queryClient = useQueryClient()
 
   const {
@@ -59,6 +61,14 @@ export const ListColumn: React.FC<ListColumnProps> = ({ list, boardId, onCardCli
 
   const { setNodeRef: setDroppableRef } = useDroppable({ id: list.id })
 
+  const openModal = (card: Card) => {
+    setModalCard(card)
+  }
+
+  const closeModal = () => {
+    setModalCard(null)
+  }
+
   return (
     <div
       ref={(node) => { setNodeRef(node); setDroppableRef(node as HTMLElement | null) }}
@@ -92,7 +102,7 @@ export const ListColumn: React.FC<ListColumnProps> = ({ list, boardId, onCardCli
               <CardItem
                 card={card}
                 boardId={boardId}
-                onClick={() => onCardClick(card)}
+                onOpenModal={() => openModal(card)}  // Opens modal
                 onCardUpdate={onCardUpdate}
               />
               <button
@@ -119,13 +129,19 @@ export const ListColumn: React.FC<ListColumnProps> = ({ list, boardId, onCardCli
       <CreateCardModal
         isOpen={isCreateCardModalOpen}
         onClose={() => setIsCreateCardModalOpen(false)}
-        onSubmit={() => {
-          // The modal handles its own mutation
-        }}
+        onSubmit={() => {}}
         isLoading={false}
         listId={list.id}
       />
+
+      {/* CARD MODAL */}
+      {modalCard && (
+        <CardModal
+          card={modalCard}
+          isOpen={true}
+          onClose={closeModal}
+        />
+      )}
     </div>
   )
 }
-
