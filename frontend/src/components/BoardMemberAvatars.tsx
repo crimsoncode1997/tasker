@@ -1,25 +1,26 @@
-import React from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { boardsApi, BoardMember } from '@/services/boards'
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { boardsApi, BoardMember } from "@/services/boards";
 
 interface BoardMemberAvatarsProps {
-  boardId: string
-  maxVisible?: number
-  size?: 'sm' | 'md' | 'lg'
-  showTooltip?: boolean
+  boardId: string;
+  maxVisible?: number;
+  size?: "sm" | "md" | "lg";
+  showTooltip?: boolean;
 }
 
 export const BoardMemberAvatars: React.FC<BoardMemberAvatarsProps> = ({
   boardId,
   maxVisible = 3,
-  size = 'md',
-  showTooltip = true
+  size = "md",
+  showTooltip = true,
 }) => {
   const { data: membersData, isLoading } = useQuery({
-    queryKey: ['board-members', boardId],
+    queryKey: ["board-members", boardId],
     queryFn: () => boardsApi.getBoardMembers(boardId),
     enabled: !!boardId,
-  })
+    refetchInterval: 30000, // Refresh full board content every 30 seconds
+  });
 
   if (isLoading) {
     return (
@@ -28,57 +29,56 @@ export const BoardMemberAvatars: React.FC<BoardMemberAvatarsProps> = ({
         <div className="animate-pulse bg-gray-200 rounded-full h-6 w-6"></div>
         <div className="animate-pulse bg-gray-200 rounded-full h-6 w-6"></div>
       </div>
-    )
+    );
   }
 
-  const members: BoardMember[] = membersData?.members || []
-  const visibleMembers = members.slice(0, maxVisible)
-  const remainingCount = Math.max(0, members.length - maxVisible)
+  const members: BoardMember[] = membersData?.members || [];
+  const visibleMembers = members.slice(0, maxVisible);
+  const remainingCount = Math.max(0, members.length - maxVisible);
 
   const getSizeClasses = () => {
     switch (size) {
-      case 'sm':
-        return 'h-6 w-6 text-xs'
-      case 'lg':
-        return 'h-10 w-10 text-sm'
+      case "sm":
+        return "h-6 w-6 text-xs";
+      case "lg":
+        return "h-10 w-10 text-sm";
       default:
-        return 'h-8 w-8 text-sm'
+        return "h-8 w-8 text-sm";
     }
-  }
+  };
 
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
+      .split(" ")
+      .map((word) => word.charAt(0))
+      .join("")
       .toUpperCase()
-      .slice(0, 2)
-  }
+      .slice(0, 2);
+  };
 
   const getAvatarColor = (name: string) => {
     const colors = [
-      'bg-blue-500',
-      'bg-green-500',
-      'bg-purple-500',
-      'bg-pink-500',
-      'bg-indigo-500',
-      'bg-yellow-500',
-      'bg-red-500',
-      'bg-teal-500',
-    ]
-    const index = name.charCodeAt(0) % colors.length
-    return colors[index]
-  }
+      "bg-blue-500",
+      "bg-green-500",
+      "bg-purple-500",
+      "bg-pink-500",
+      "bg-indigo-500",
+      "bg-yellow-500",
+      "bg-red-500",
+      "bg-teal-500",
+    ];
+    const index = name.charCodeAt(0) % colors.length;
+    return colors[index];
+  };
 
   return (
     <div className="flex items-center space-x-1">
       {visibleMembers.map((member) => (
-        <div
-          key={member.id}
-          className={`relative group ${getSizeClasses()}`}
-        >
+        <div key={member.id} className={`relative group ${getSizeClasses()}`}>
           <div
-            className={`${getSizeClasses()} ${getAvatarColor(member.full_name)} text-white rounded-full flex items-center justify-center font-medium border-2 border-white shadow-sm`}
+            className={`${getSizeClasses()} ${getAvatarColor(
+              member.full_name
+            )} text-white rounded-full flex items-center justify-center font-medium border-2 border-white shadow-sm`}
           >
             {getInitials(member.full_name)}
           </div>
@@ -93,10 +93,49 @@ export const BoardMemberAvatars: React.FC<BoardMemberAvatarsProps> = ({
         </div>
       ))}
       {remainingCount > 0 && (
-        <div className={`${getSizeClasses()} bg-gray-300 text-gray-600 rounded-full flex items-center justify-center font-medium border-2 border-white shadow-sm`}>
-          +{remainingCount}
+        <div className="relative group">
+          <div
+            className={`${getSizeClasses()} bg-gray-300 text-gray-600 rounded-full flex items-center justify-center font-medium border-2 border-white shadow-sm cursor-pointer`}
+          >
+            +{remainingCount}
+          </div>
+
+          {/* Hover Dropdown: Hidden Members */}
+          <div
+            className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 
+                 opacity-0 invisible group-hover:opacity-100 group-hover:visible 
+                 transition-all duration-200 z-50 overflow-hidden"
+          >
+            <div className="max-h-64 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+              {members.slice(maxVisible).map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center space-x-3 px-3 py-2 hover:bg-gray-50 rounded-md transition-colors"
+                >
+                  <div
+                    className={`w-8 h-8 ${getAvatarColor(
+                      member.full_name
+                    )} text-white rounded-full flex items-center justify-center text-sm font-medium`}
+                  >
+                    {getInitials(member.full_name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-900 truncate">
+                      {member.full_name}
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">
+                      {member.email}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-400 capitalize px-2 py-1 bg-gray-100 rounded-full">
+                    {member.role}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
-  )
-}
+  );
+};
