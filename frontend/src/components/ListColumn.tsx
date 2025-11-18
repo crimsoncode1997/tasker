@@ -111,7 +111,6 @@ export const ListColumn: React.FC<ListColumnProps> = ({ list, boardId, onCardUpd
                 aria-label="Delete card"
                 title="Delete card"
               >
-                ×
               </button>
             </div>
           ))}

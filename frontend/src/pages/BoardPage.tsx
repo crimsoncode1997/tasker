@@ -20,7 +20,6 @@ export const BoardPage: React.FC = () => {
   const [isCreateListModalOpen, setIsCreateListModalOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  // Board invitation hooks
   const {
     inviteEmail,
     setInviteEmail,
@@ -85,6 +84,7 @@ export const BoardPage: React.FC = () => {
       onBoardUpdate={handleBoardUpdate}
     >
       <div>
+        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div className="flex-1">
             <div className="flex items-center justify-between">
@@ -127,25 +127,34 @@ export const BoardPage: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="flex space-x-2 ml-4">
-            <button
-              onClick={openInviteModal}
-              className="btn btn-secondary flex items-center space-x-2"
-            >
+
+          <div className="flex space-x-2">
+            <button onClick={openInviteModal} className="btn btn-secondary flex items-center space-x-2">
               <UserPlusIcon className="w-5 h-5" />
               <span>Invite</span>
             </button>
-            <button
-              onClick={() => setIsCreateListModalOpen(true)}
-              className="btn btn-primary flex items-center space-x-2"
-            >
+            <button onClick={() => setIsCreateListModalOpen(true)} className="btn btn-primary flex items-center space-x-2">
               <PlusIcon className="w-5 h-5" />
               <span>Add List</span>
             </button>
           </div>
         </div>
 
-        <BoardView boardId={boardId!} />
+        {/* Tabs */}
+        <div className="flex gap-6 mb-6 border-b pb-2">
+          <Link to={`/board/${boardId}`} className="text-blue-600 hover:underline">
+            Board
+          </Link>
+          <Link to={`/board/${boardId}/calendar`} className="text-blue-600 hover:underline">
+            Calendar
+          </Link>
+        </div>
+
+        {/* Routes for board view and calendar */}
+        <Routes>
+          <Route path="/" element={<BoardView boardId={boardId!} />} />
+          <Route path="calendar" element={<CalendarPage />} />
+        </Routes>
 
         <CreateListModal
           isOpen={isCreateListModalOpen}

@@ -314,3 +314,22 @@ async def delete_card(
     
     await card_service.delete(db, card)
 
+@router.get("/board/{board_id}", response_model=List[Card])
+async def get_cards_by_board(
+    board_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get all cards from all lists in a specific board."""
+    # Check if user has access to the board
+    has_access = await board_service.check_user_access(db, board_id, current_user.id)
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+
+    # Get all cards belonging to lists in this board
+    cards = await card_service.get_by_board_id(db, board_id)
+
+    return cards
