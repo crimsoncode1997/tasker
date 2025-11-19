@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, Routes, Route, Link} from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { boardsApi } from "@/services/boards";
 import { listsApi } from "@/services/lists";
@@ -7,6 +7,7 @@ import { CreateListModal } from "@/components/CreateListModal";
 import { CollaborationStatus } from "@/components/CollaborationStatus";
 import { BoardMemberAvatars } from "@/components/BoardMemberAvatars";
 import { BoardCollaborationProvider } from "@/contexts/BoardCollaborationContext";
+import { CalendarPage } from '@/pages/CalendarPage'
 import {
   useBoardInvitations,
   InviteUserModal,
