@@ -17,7 +17,7 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.get("/", response_model=List[Board])
+@router.get("", response_model=List[Board])
 async def get_boards(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
@@ -36,7 +36,7 @@ async def get_boards(
     return boards[skip:skip + limit]
 
 
-@router.post(response_model=Board, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Board, status_code=status.HTTP_201_CREATED)
 async def create_board(
     board_in: BoardCreate,
     current_user: User = Depends(get_current_active_user),
