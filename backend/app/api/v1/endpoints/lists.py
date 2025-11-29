@@ -18,7 +18,7 @@ logger = structlog.get_logger()
 router = APIRouter()
 
 
-@router.post("/", response_model=ListSchema, status_code=status.HTTP_201_CREATED)
+@router.post(response_model=ListSchema, status_code=status.HTTP_201_CREATED)
 async def create_list(
     list_in: ListCreate,
     current_user: User = Depends(get_current_active_user),
